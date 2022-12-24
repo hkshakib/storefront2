@@ -12,6 +12,19 @@ from .serializers import ProductSerializer, CollectionSerializers
 # Create your views here.
 #
 
+class ProductList(APIView):
+    def get(self, request):
+        queryset = Product.objects.select_related("collection").all()
+        serializer = ProductSerializer(queryset, many=True, context={'request': request})
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = ProductSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
 @api_view(['GET', 'POST'])
 def product_list(request):
     if request.method == 'GET':
@@ -23,6 +36,28 @@ def product_list(request):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class ProductDetails(APIView):
+    def get(self, request, id):
+        product = get_object_or_404(Product, pk=id)
+        serializer = ProductSerializer(product)
+        return Response(serializer.data)
+
+    def put(self, request, id):
+        product = get_object_or_404(Product, pk=id)
+        serializer = ProductSerializer(product, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    def delete(self, request, id):
+        product = get_object_or_404(Product, pk=id)
+        if product.Orderitems.count() > 0:
+            return Response({'error': "Can't Be Deleted , Because it associated with Cart"},
+                            status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        product.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @api_view(['get', 'PUT', 'DELETE'])
@@ -39,7 +74,8 @@ def product_details(request, id):
         return Response(serializer.data)
     elif request.method == 'DELETE':
         if product.Orderitems.count() > 0:
-            return Response({'error': "Can't Be Deleted , Because it associated with Cart"},status=status.HTTP_405_METHOD_NOT_ALLOWED)
+            return Response({'error': "Can't Be Deleted , Because it associated with Cart"},
+                            status=status.HTTP_405_METHOD_NOT_ALLOWED)
         product.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -72,6 +108,7 @@ def collection_details(request, pk):
         return Response(serializer.data)
     elif request.method == "DELETE":
         if collection.products.count() > 0:
-            return Response({'error': "Can't Be Deleted , Because it's Include one or more products"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+            return Response({'error': "Can't Be Deleted , Because it's Include one or more products"},
+                            status=status.HTTP_405_METHOD_NOT_ALLOWED)
         collection.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
