@@ -4,15 +4,22 @@ from rest_framework.response import Response
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.viewsets import ModelViewSet
 from rest_framework import status
-from .models import Collection, Product
-from .serializers import ProductSerializer, CollectionSerializers
+from .models import Collection, Product, Reviews
+from .serializers import ProductSerializer, CollectionSerializers, ReviewSerializer
 
 
 # Create your views here.
 #
 class ProductViewSet(ModelViewSet):
-    queryset = Product.objects.select_related("collection").all()
     serializer_class = ProductSerializer
+
+    def get_queryset(self):
+        queryset = Product.objects.all()
+        collection_id = self.request.query_params.get('collection_id')
+
+        if collection_id is not None:
+            queryset = queryset.filter(collection_id=collection_id)
+        return queryset
 
     def get_serializer_context(self):
         return {'request': self.request}
@@ -43,3 +50,11 @@ class CollectionList(ListCreateAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class ReviewViewSet(ModelViewSet):
+    serializer_class = ReviewSerializer
+
+    def get_queryset(self):
+        return Reviews.objects.filter(product_id=self.kwargs['product_pk'])
+
+    def get_serializer_context(self):
+        return {'product_id': self.kwargs['product_pk']}
